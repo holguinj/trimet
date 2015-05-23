@@ -3,17 +3,22 @@
             [clojure.data.json :as json])
   (:use [clojure.pprint]))
 
-(defn new-stop-id-query-fn [app-id]
-  "Returns a function that queries the Trimet API using the supplied appId."
+(defn get-stop
+  "Queries the Trimet API using the supplied appId."
+  [app-id stop]
   (let [query-head (str "http://developer.trimet.org/ws/V1/arrivals?appId=" app-id "&json=true&locIDs=")]
-    (fn [& stops]
-      (let [query-tail (string/join "," stops)
-            query (str query-head query-tail)]
+    (let [query (str query-head stop)]
       (->> query
-           (slurp)
-           (json/read-str))))))
+        (slurp)
+        (json/read-str)))))
 
 (defn next-arrivals [response route]
   (->> (get-in response ["resultSet" "arrival"])
        (filter #(= route (get % "route")))
        (map (juxt #(get % "fullSign") #(get % "estimated")))))
+
+(defn get-arrivals
+  "Gets the next arrivals for the given stop and bus."
+  [id stop bus]
+  (-> (get-stop id stop)
+    (next-arrivals bus)))
